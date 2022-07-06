@@ -5,18 +5,16 @@ import java.net.URL;
 import java.util.Collections;
 import java.util.List;
 
+import org.eclipse.jetty.cdi.CdiDecoratingListener;
+import org.eclipse.jetty.cdi.CdiServletContainerInitializer;
 import org.eclipse.jetty.server.HttpConfiguration;
 import org.eclipse.jetty.server.HttpConnectionFactory;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
-import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.util.resource.Resource;
 import org.eclipse.jetty.util.resource.ResourceCollection;
 import org.eclipse.jetty.webapp.WebAppContext;
-import org.eclipse.jetty.websocket.javax.server.config.JavaxWebSocketServletContainerInitializer;
-import org.jboss.weld.environment.se.Weld;
-import org.jboss.weld.environment.se.WeldContainer;
-import org.jboss.weld.environment.servlet.WeldServletLifecycle;
 
 import io.smallrye.graphql.entry.http.ExecutionServlet;
 import io.smallrye.graphql.entry.http.SchemaServlet;
@@ -43,32 +41,36 @@ public class Start {
     private static Server createJettyserver() throws IOException {
         //Version 1
         //https://docs.jboss.org/weld/reference/latest/en-US/html/environments.html#_weld_se_and_weld_servlet_cooperation
-        Weld weld = new Weld();
-        WeldContainer container = weld.initialize();
+//        Weld weld = new Weld();
+//        WeldContainer container = weld.initialize();
         //see also below the line webappContext.setAttribute(WeldServletLifecycle.BEAN_MANAGER_ATTRIBUTE_NAME
 
 
         Server jettyServer = new Server();
 
         //Create Jettycontext
-        WebAppContext webappContext = new WebAppContext();
+        ServletContextHandler webappContext = new WebAppContext();//new ServletContextHandler();
         webappContext.setContextPath("/");
 
 
         //Servlets
-        ServletHolder servlet = new ServletHolder(ExecutionServlet.class);
-        servlet.setInitOrder(1);
+//        ServletHolder servlet = new ServletHolder(ExecutionServlet.class);
+//        servlet.setInitOrder(1);
+//
+//        ServletHolder schemaServlet = new ServletHolder(SchemaServlet.class);
+//        schemaServlet.setInitOrder(2);
+//
+//        webappContext.addServlet(servlet, "/graphql/*");
+//        webappContext.addServlet(schemaServlet, "/graphql/schema.graphql");
 
-        ServletHolder schemaServlet = new ServletHolder(SchemaServlet.class);
-        schemaServlet.setInitOrder(2);
+        webappContext.addServlet(ExecutionServlet.class, "/graphql/*");
+        webappContext.addServlet(SchemaServlet.class, "/graphql/schema.graphql");
 
-        webappContext.addServlet(servlet, "/graphql/*");
-        webappContext.addServlet(schemaServlet, "/graphql/schema.graphql");
-        webappContext.setResourceBase("");
+        //webappContext.setResourceBase("");
 
         //Version 1
         //https://docs.jboss.org/weld/reference/latest/en-US/html/environments.html#_weld_se_and_weld_servlet_cooperation
-        webappContext.setAttribute(WeldServletLifecycle.BEAN_MANAGER_ATTRIBUTE_NAME, container.getBeanManager());
+//        webappContext.setAttribute(WeldServletLifecycle.BEAN_MANAGER_ATTRIBUTE_NAME, container.getBeanManager());
 
 
         //Baseresouce with graphql-ui
@@ -81,10 +83,17 @@ public class Start {
         webappContext.setBaseResource(resourceColl);
 
 
-        //Enable Websocket
-        JavaxWebSocketServletContainerInitializer.configure(webappContext, (servletContext, wsContainer) ->
-            wsContainer.addEndpoint(ExecutionServlet.class));
 
+        //Enable Websocket not working with version 3
+//        JavaxWebSocketServletContainerInitializer.configure(webappContext, (servletContext, wsContainer) ->
+//            wsContainer.addEndpoint(ExecutionServlet.class));
+
+
+        //Version 3
+        //https://github.com/jetty-project/embedded-jetty-weld/blob/jetty-10.0.x/src/main/java/org/eclipse/jetty/demos/ServerMain.java
+        webappContext.setInitParameter(CdiServletContainerInitializer.CDI_INTEGRATION_ATTRIBUTE, CdiDecoratingListener.MODE);
+        webappContext.addServletContainerInitializer(new CdiServletContainerInitializer());
+        webappContext.addServletContainerInitializer(new org.jboss.weld.environment.servlet.EnhancedListener());
 
         //Add all to Server
         jettyServer.setHandler(webappContext);
@@ -96,6 +105,9 @@ public class Start {
         //webappContext.addEventListener(new org.eclipse.jetty.webapp.DecoratingListener()); throws a NPE
 //        webappContext.addEventListener(new org.eclipse.jetty.webapp.DecoratingListener(webappContext));
 //        webappContext.addEventListener(new org.jboss.weld.environment.servlet.Listener());
+
+
+
 
 
         //Serverconnector http only
