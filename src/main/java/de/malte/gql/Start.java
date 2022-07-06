@@ -66,6 +66,9 @@ public class Start {
         webappContext.addServlet(ExecutionServlet.class, "/graphql/*");
         webappContext.addServlet(SchemaServlet.class, "/graphql/schema.graphql");
 
+        //Testservlet with @inject
+        webappContext.addServlet(TimeServlet.class, "/time/");
+
         //webappContext.setResourceBase("");
 
         //Version 1
@@ -94,6 +97,7 @@ public class Start {
         webappContext.setInitParameter(CdiServletContainerInitializer.CDI_INTEGRATION_ATTRIBUTE, CdiDecoratingListener.MODE);
         webappContext.addServletContainerInitializer(new CdiServletContainerInitializer());
         webappContext.addServletContainerInitializer(new org.jboss.weld.environment.servlet.EnhancedListener());
+
 
         //Add all to Server
         jettyServer.setHandler(webappContext);
